@@ -1,5 +1,4 @@
-# matlab_partical_filter_demo
-reference:http://ros-developer.com/2019/04/10/parcticle-filter-explained-with-python-code-from-scratch/
+# Particle Filter demo
 
 
 # SOP
@@ -10,3 +9,6 @@ reference:http://ros-developer.com/2019/04/10/parcticle-filter-explained-with-py
 # Result
 
 [![](http://img.youtube.com/vi/_iThyEJgUIU/0.jpg)](http://www.youtube.com/watch?v=_iThyEJgUIU "")
+
+# Cite
+reference:http://ros-developer.com/2019/04/10/parcticle-filter-explained-with-python-code-from-scratch/
