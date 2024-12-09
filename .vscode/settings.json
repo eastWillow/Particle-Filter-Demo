@@ -1,0 +1,21 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/*.o": true,
+        "**/*.exe": true,
+    },
+    "testMate.cpp.test.advancedExecutables": [
+    {
+        "pattern": "{build,Build,BUILD,out,Out,OUT,bin}/**/*{test,Test,TEST}*",
+        "cwd": "${absDirpath}",
+        "env": {
+        "ExampleENV1": "You can use variables here too, like ${relPath}",
+        "PATH": "${os_env:PATH}${osPathEnvSep}/adding/new/item/to/PATH/env"
+        }
+    }
+]
+}
