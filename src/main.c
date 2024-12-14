@@ -56,33 +56,45 @@ int main()
 {
     uint16_t winWitdh = 1280;
     uint16_t winHeight = 800;
+    Vector2 targetCenter = {0, 0};
     float targetCenterX = winWitdh / 2;
     float targetCenterY = 0;
-    char strBuf[] = "9999.99 cm";
+    bool mouseFollow = true;
+    char strBufLeft[] = "9999.99 cm";
+    char strBufRight[] = "9999.99 cm";
+    float noiseRatio = 0;
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
 
     // Create the window and OpenGL context
-    InitWindow(winWitdh, winHeight, "Hello Raylib");
+    InitWindow(winWitdh, winHeight, "Partical Filter Demo");
 
     // game loop
     while (!WindowShouldClose()) // run the loop untill the user presses ESCAPE or presses the Close button on the window
     {
-        // drawing
-        BeginDrawing();
+        //----------------------------------------------------------------------------------
+        // Update
+        //----------------------------------------------------------------------------------
+        if (IsKeyPressed(KEY_T))
+        {
+            mouseFollow = !mouseFollow;
+        }
+        Rectangle checkBoxPosition = {100, winHeight - 20, 20, 20};
+        GuiCheckBox(checkBoxPosition, "Toggle Mouse Tracking (t)", &mouseFollow);
+        if (mouseFollow)
+        {
+            targetCenter = GetMousePosition();
+        }
+        else
+        {
+            Rectangle targetSliderBarPos = {100, checkBoxPosition.y - 25, 100, 20};
+            GuiSlider(targetSliderBarPos, "Target X (Left) :", "(Right)", &targetCenter.x, 0, winWitdh);
+            targetSliderBarPos.y -= 25;
+            GuiSlider(targetSliderBarPos, "Target Y (Up) :", "(Down)", &targetCenter.y, 0, winHeight);
+        }
 
-        // Setup the back buffer for drawing (clear color and depth buffers)
-        ClearBackground(BLACK);
-
-        // GUI
-        Rectangle sliderBarPosition = {100, winHeight - 20, 100, 20};
-        GuiSlider(sliderBarPosition, "Target X (Left) :", "(Right)", &targetCenterX, 0, winWitdh);
-        sliderBarPosition.y -= 20;
-        GuiSlider(sliderBarPosition, "Target Y (Up) :", "(Down)", &targetCenterY, 0, winHeight);
-
-        // Target
-        Vector2 targetCenter = {targetCenterX, targetCenterY};
-        DrawCircleV(targetCenter, 10, RED);
+        Rectangle noiseSliderBarPos = {500, winHeight - 20, 100, 20};
+        GuiSlider(noiseSliderBarPos, "Dist. Noise Ratio (Min) :", "(Max)", &noiseRatio, 0, 100);
 
         // Left LandMark
         float leftTriXOffset = -200;
@@ -90,7 +102,9 @@ int main()
         float leftTriCenterX = winWitdh / 2 + leftTriXOffset;
         float leftTriCenterY = leftTriYOffset;
         Vector2 leftTriCenterV = {leftTriCenterX, leftTriCenterY};
-        DrawEquilateralTriangle(leftTriCenterV, 5, YELLOW);
+        Vector2 leftMidPoint = Vector2Scale(Vector2Add(leftTriCenterV, targetCenter), 0.5f);
+        float leftDistance = Vector2Distance(leftTriCenterV, targetCenter);
+        sprintf(strBufLeft, "%4.1f mm", leftDistance);
 
         // Right LandMark
         float rightTriXOffset = 200;
@@ -98,6 +112,24 @@ int main()
         float rightTriCenterX = winWitdh / 2 + rightTriXOffset;
         float rightTriCenterY = rightTriYOffset;
         Vector2 rightTriCenterV = {rightTriCenterX, rightTriCenterY};
+
+        Vector2 rightMidPoint = Vector2Scale(Vector2Add(rightTriCenterV, targetCenter), 0.5f);
+        float rightDistance = Vector2Distance(rightTriCenterV, targetCenter);
+        sprintf(strBufRight, "%4.1f mm", rightDistance);
+
+        //----------------------------------------------------------------------------------
+        // Drawing
+        //----------------------------------------------------------------------------------
+        BeginDrawing();
+
+        // Setup the back buffer for drawing (clear color and depth buffers)
+        ClearBackground(BLACK);
+
+        // Target
+        DrawCircleV(targetCenter, 10, RED);
+
+        // Draw LandMark
+        DrawEquilateralTriangle(leftTriCenterV, 5, YELLOW);
         DrawEquilateralTriangle(rightTriCenterV, 5, YELLOW);
 
         // Draw the Distance dot line
@@ -105,15 +137,8 @@ int main()
         DrawLineV(rightTriCenterV, targetCenter, GRAY);
 
         // Draw the Distance Value
-        Vector2 leftMidPoint = Vector2Scale(Vector2Add(leftTriCenterV, targetCenter), 0.5f);
-        float leftDistance = Vector2Distance(leftTriCenterV, targetCenter);
-        sprintf(strBuf, "%4.1f mm", leftDistance);
-        DrawTextEx(GetFontDefault(), strBuf, leftMidPoint, 30, 1.5, WHITE);
-
-        Vector2 rightMidPoint = Vector2Scale(Vector2Add(rightTriCenterV, targetCenter), 0.5f);
-        float rightDistance = Vector2Distance(rightTriCenterV, targetCenter);
-        sprintf(strBuf, "%4.1f mm", rightDistance);
-        DrawTextEx(GetFontDefault(), strBuf, rightMidPoint, 30, 1.5, WHITE);
+        DrawTextEx(GetFontDefault(), strBufLeft, leftMidPoint, 30, 1.5, WHITE);
+        DrawTextEx(GetFontDefault(), strBufRight, rightMidPoint, 30, 1.5, WHITE);
 
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
