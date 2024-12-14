@@ -24,12 +24,15 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 
 */
 
-#include "raylib.h"
-#include "raymath.h"
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "raylib.h"
+#include "raymath.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 void DrawEquilateralTriangle(Vector2 center, float radius, Color color)
 {
@@ -53,6 +56,8 @@ int main()
 {
     uint16_t winWitdh = 1280;
     uint16_t winHeight = 800;
+    float targetCenterX = winWitdh / 2;
+    float targetCenterY = 0;
     char strBuf[] = "9999.99 cm";
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
@@ -69,9 +74,13 @@ int main()
         // Setup the back buffer for drawing (clear color and depth buffers)
         ClearBackground(BLACK);
 
+        // GUI
+        Rectangle sliderBarPosition = {100, winHeight - 20, 100, 20};
+        GuiSlider(sliderBarPosition, "Target X (Left) :", "(Right)", &targetCenterX, 0, winWitdh);
+        sliderBarPosition.y -= 20;
+        GuiSlider(sliderBarPosition, "Target Y (Up) :", "(Down)", &targetCenterY, 0, winHeight);
+
         // Target
-        float targetCenterX = winWitdh / 2;
-        float targetCenterY = 100;
         Vector2 targetCenter = {targetCenterX, targetCenterY};
         DrawCircleV(targetCenter, 10, RED);
 

@@ -38,6 +38,17 @@ function check_raylib()
     os.chdir("../")
 end
 
+function check_raygui()
+    os.chdir("external")
+    if(not os.isfile("raygui.h")) then
+        print("Raygui not found, downloading from github")
+        local result_str, response_code = http.download("https://github.com/raysan5/raygui/raw/refs/heads/master/src/raygui.h", "raygui.h", {
+            progress = download_progress,
+            headers = { "From: Premake", "Referer: Premake" }
+        })
+    end
+end
+
 function check_gtest()
     os.chdir("external")
     if(os.isdir("googletest-main") == false) then
@@ -58,6 +69,7 @@ end
 function build_externals()
     print("calling externals")
     check_raylib()
+    check_raygui()
     check_gtest()
 end
 
@@ -174,6 +186,7 @@ workspace (workspaceName)
 
         includedirs { "../src" }
         includedirs { "../include" }
+        includedirs { "./external" }
 
         links {"raylib"}
 

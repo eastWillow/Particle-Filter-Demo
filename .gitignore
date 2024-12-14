@@ -419,3 +419,6 @@ googletest-main
 bin
 Makefile
 /*.sln
+
+# external (use premake to download the file)
+build/external/raygui.h
