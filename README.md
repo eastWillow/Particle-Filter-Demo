@@ -3,15 +3,17 @@
 # Use the RayLib to Demo this algorithm
 
 - [x] Set Up the Development Environment
-- [ ] Add a Constant Position Target
-- [ ] Add two Landmark
+- [x] Add a Constant Position Target
+- [x] Add two Landmark
 - [ ] Calculate the Distance Between a Landmark and a Target
-    - [ ] Simple Distance
-    - [ ] Random Distance
+    - [x] Draw the line
+    - [x] Draw the Distance Value
+    - [x] Simple Distance
 - [ ] Integrate ImGui to Control These Positions
 - [ ] Add Mouse Position Tracking
     - [ ] Target
     - [ ] Landmark
+    - [ ] Add Random Noise
 
 # Prerequirement
 
