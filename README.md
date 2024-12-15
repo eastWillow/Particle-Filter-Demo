@@ -13,8 +13,8 @@
 - [ ] Add Mouse Position Tracking
     - [x] Target
     - [ ] Landmark
-- [ ] Add Distance Random Noise
-- [ ] Caluate the Simulation Result 
+- [x] Add Distance Random Noise
+- [x] Caluate the Simulation Result 
 - [ ] Particle Filter Algorithm
 
 # Prerequirement

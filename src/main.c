@@ -57,12 +57,17 @@ int main()
     uint16_t winWitdh = 1280;
     uint16_t winHeight = 800;
     Vector2 targetCenter = {0, 0};
+    Vector2 simuCenterHistory[100] = {0};
+
     float targetCenterX = winWitdh / 2;
     float targetCenterY = 0;
     bool mouseFollow = true;
     char strBufLeft[] = "9999.99 cm";
     char strBufRight[] = "9999.99 cm";
-    float noiseRatio = 0;
+    float noiseRatio = 30;
+    float fps = 100;
+    float history_numbers = 100;
+
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
 
@@ -95,6 +100,13 @@ int main()
 
         Rectangle noiseSliderBarPos = {500, winHeight - 20, 100, 20};
         GuiSlider(noiseSliderBarPos, "Dist. Noise Ratio (Min) :", "(Max)", &noiseRatio, 0, 100);
+        noiseSliderBarPos.y -= 25;
+
+        GuiSlider(noiseSliderBarPos, "FPS (1) :", "(100)", &fps, 0, 100);
+        SetTargetFPS((int)floorf(fps));
+
+        noiseSliderBarPos.y -= 25;
+        GuiSlider(noiseSliderBarPos, "History (1) :", "(100)", &history_numbers, 0, 100);
 
         // Left LandMark
         float leftTriXOffset = -200;
@@ -105,6 +117,8 @@ int main()
         Vector2 leftMidPoint = Vector2Scale(Vector2Add(leftTriCenterV, targetCenter), 0.5f);
         float leftDistance = Vector2Distance(leftTriCenterV, targetCenter);
         sprintf(strBufLeft, "%4.1f mm", leftDistance);
+        // Simu Left Distance
+        float simuLeftDistance = leftDistance + noiseRatio * (GetRandomValue(-1000, 1000) / 1000.0);
 
         // Right LandMark
         float rightTriXOffset = 200;
@@ -112,10 +126,29 @@ int main()
         float rightTriCenterX = winWitdh / 2 + rightTriXOffset;
         float rightTriCenterY = rightTriYOffset;
         Vector2 rightTriCenterV = {rightTriCenterX, rightTriCenterY};
-
         Vector2 rightMidPoint = Vector2Scale(Vector2Add(rightTriCenterV, targetCenter), 0.5f);
         float rightDistance = Vector2Distance(rightTriCenterV, targetCenter);
         sprintf(strBufRight, "%4.1f mm", rightDistance);
+        // Simu Right Distance
+        float simuRightDistance = rightDistance + noiseRatio * (GetRandomValue(-1000, 1000) / 1000.0);
+
+        // Caluate Simu Target Form two Distance Only
+        double landmarkDistance = rightTriXOffset - leftTriXOffset;
+        double simuX = (simuRightDistance * simuRightDistance - simuLeftDistance * simuLeftDistance - landmarkDistance * landmarkDistance) / (2.0 * landmarkDistance);
+        double simuY = sqrt(simuLeftDistance * simuLeftDistance - simuX * simuX);
+
+        // Convert Coordinate system
+        Vector2 simuCenter = {-simuX + leftTriCenterX, -simuY + leftTriCenterY};
+
+        if (history_numbers > 1)
+        {
+            for (size_t HistoryCounter = (size_t)history_numbers - 1; HistoryCounter > (0); HistoryCounter--)
+            {
+                simuCenterHistory[HistoryCounter] = simuCenterHistory[HistoryCounter - 1];
+            }
+        }
+
+        simuCenterHistory[0] = simuCenter;
 
         //----------------------------------------------------------------------------------
         // Drawing
@@ -126,19 +159,36 @@ int main()
         ClearBackground(BLACK);
 
         // Target
-        DrawCircleV(targetCenter, 10, RED);
+        DrawCircleV(targetCenter, 10, GRAY);
 
         // Draw LandMark
-        DrawEquilateralTriangle(leftTriCenterV, 5, YELLOW);
-        DrawEquilateralTriangle(rightTriCenterV, 5, YELLOW);
+        DrawEquilateralTriangle(leftTriCenterV, 5, BLUE);
+        DrawEquilateralTriangle(rightTriCenterV, 5, PURPLE);
 
         // Draw the Distance dot line
-        DrawLineV(leftTriCenterV, targetCenter, GRAY);
-        DrawLineV(rightTriCenterV, targetCenter, GRAY);
+        DrawLineV(leftTriCenterV, targetCenter, DARKBLUE);
+        DrawLineV(rightTriCenterV, targetCenter, DARKPURPLE);
 
         // Draw the Distance Value
         DrawTextEx(GetFontDefault(), strBufLeft, leftMidPoint, 30, 1.5, WHITE);
         DrawTextEx(GetFontDefault(), strBufRight, rightMidPoint, 30, 1.5, WHITE);
+
+        // Draw the Simulation Distance Circle
+        DrawCircleLinesV(leftTriCenterV, simuLeftDistance, BLUE);
+        DrawCircleLinesV(rightTriCenterV, simuRightDistance, PURPLE);
+
+        // Draw the Simulation Result
+        if (history_numbers > 1)
+        {
+            for (size_t HistoryCounter = (size_t)history_numbers - 1; HistoryCounter > 0; HistoryCounter--)
+            {
+                DrawCircleV(simuCenterHistory[HistoryCounter], 5, ColorAlpha(RED, 1.0f - HistoryCounter / (history_numbers * 1.0f)));
+            }
+        }
+        else
+        {
+            DrawCircleV(simuCenterHistory[0], 5, RED);
+        }
 
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
