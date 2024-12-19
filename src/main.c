@@ -25,7 +25,6 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 */
 
 #include <stdint.h>
-#include <math.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -33,6 +32,8 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include "raymath.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
+
+#include "particle_filter.h"
 
 void DrawEquilateralTriangle(Vector2 center, float radius, Color color)
 {
@@ -54,14 +55,14 @@ void DrawEquilateralTriangle(Vector2 center, float radius, Color color)
 
 int main()
 {
-    uint16_t winWitdh = 1280;
-    uint16_t winHeight = 800;
-    Vector2 targetCenter = {0, 0};
+    uint16_t winWitdh = 2400;
+    uint16_t winHeight = 1200;
+    Vector2 targetCenter = {winWitdh / 2, 0};
     Vector2 simuCenterHistory[100] = {0};
 
     float targetCenterX = winWitdh / 2;
     float targetCenterY = 0;
-    bool mouseFollow = true;
+    bool mouseFollow = false;
     char strBufLeft[] = "9999.99 cm";
     char strBufRight[] = "9999.99 cm";
     float noiseRatio = 30;
@@ -73,6 +74,9 @@ int main()
 
     // Create the window and OpenGL context
     InitWindow(winWitdh, winHeight, "Partical Filter Demo");
+
+    //particle_filter initial
+    init(input_particles);
 
     // game loop
     while (!WindowShouldClose()) // run the loop untill the user presses ESCAPE or presses the Close button on the window
@@ -110,24 +114,24 @@ int main()
 
         // Left LandMark
         float leftTriXOffset = -200;
-        float leftTriYOffset = 700;
-        float leftTriCenterX = winWitdh / 2 + leftTriXOffset;
-        float leftTriCenterY = leftTriYOffset;
-        Vector2 leftTriCenterV = {leftTriCenterX, leftTriCenterY};
-        Vector2 leftMidPoint = Vector2Scale(Vector2Add(leftTriCenterV, targetCenter), 0.5f);
-        float leftDistance = Vector2Distance(leftTriCenterV, targetCenter);
+        float leftTriYOffset = 600;
+        float leftLandMarkCenterX = winWitdh / 2 + leftTriXOffset;
+        float leftLandMarkCenterY = leftTriYOffset;
+        Vector2 leftLandMarkCenter = {leftLandMarkCenterX, leftLandMarkCenterY};
+        Vector2 leftMidPoint = Vector2Scale(Vector2Add(leftLandMarkCenter, targetCenter), 0.5f);
+        float leftDistance = Vector2Distance(leftLandMarkCenter, targetCenter);
         sprintf(strBufLeft, "%4.1f mm", leftDistance);
         // Simu Left Distance
         float simuLeftDistance = leftDistance + noiseRatio * (GetRandomValue(-1000, 1000) / 1000.0);
 
         // Right LandMark
         float rightTriXOffset = 200;
-        float rightTriYOffset = 700;
-        float rightTriCenterX = winWitdh / 2 + rightTriXOffset;
-        float rightTriCenterY = rightTriYOffset;
-        Vector2 rightTriCenterV = {rightTriCenterX, rightTriCenterY};
-        Vector2 rightMidPoint = Vector2Scale(Vector2Add(rightTriCenterV, targetCenter), 0.5f);
-        float rightDistance = Vector2Distance(rightTriCenterV, targetCenter);
+        float rightTriYOffset = 600;
+        float rightLandMarkCenterX = winWitdh / 2 + rightTriXOffset;
+        float rightLandMarkCenterY = rightTriYOffset;
+        Vector2 rightLandMarkCenter = {rightLandMarkCenterX, rightLandMarkCenterY};
+        Vector2 rightMidPoint = Vector2Scale(Vector2Add(rightLandMarkCenter, targetCenter), 0.5f);
+        float rightDistance = Vector2Distance(rightLandMarkCenter, targetCenter);
         sprintf(strBufRight, "%4.1f mm", rightDistance);
         // Simu Right Distance
         float simuRightDistance = rightDistance + noiseRatio * (GetRandomValue(-1000, 1000) / 1000.0);
@@ -138,7 +142,7 @@ int main()
         double simuY = sqrt(simuLeftDistance * simuLeftDistance - simuX * simuX);
 
         // Convert Coordinate system
-        Vector2 simuCenter = {-simuX + leftTriCenterX, -simuY + leftTriCenterY};
+        Vector2 simuCenter = {-simuX + leftLandMarkCenterX, -simuY + leftLandMarkCenterY};
 
         if (history_numbers > 1)
         {
@@ -149,6 +153,20 @@ int main()
         }
 
         simuCenterHistory[0] = simuCenter;
+
+        //----------------------------------------------------------------------------------
+        // Partical Filter
+        //----------------------------------------------------------------------------------
+        speed = Vector2Subtract(filter_center, last_filter_Center);
+        polSpeed = CartesianToPol(speed);
+        predict(output_particles, input_particles, polSpeed, polStd, GetFrameTime());
+        update_weights(output_weights, output_particles, simuLeftDistance, simuRightDistance, 1, leftLandMarkCenter, rightLandMarkCenter);
+        systematic_resample(output_indexes, output_weights);
+        resample_from_index(input_particles, output_particles, output_indexes);
+        //result is in input_particles
+        last_filter_Center = filter_center;
+        filter_center = input_particles[0];
+        filter_center_forDisplay = (Vector2){-filter_center.x + leftLandMarkCenterX, -filter_center.y + leftLandMarkCenterY};
 
         //----------------------------------------------------------------------------------
         // Drawing
@@ -162,20 +180,20 @@ int main()
         DrawCircleV(targetCenter, 10, GRAY);
 
         // Draw LandMark
-        DrawEquilateralTriangle(leftTriCenterV, 5, BLUE);
-        DrawEquilateralTriangle(rightTriCenterV, 5, PURPLE);
+        DrawEquilateralTriangle(leftLandMarkCenter, 5, BLUE);
+        DrawEquilateralTriangle(rightLandMarkCenter, 5, PURPLE);
 
         // Draw the Distance dot line
-        DrawLineV(leftTriCenterV, targetCenter, DARKBLUE);
-        DrawLineV(rightTriCenterV, targetCenter, DARKPURPLE);
+        DrawLineV(leftLandMarkCenter, targetCenter, DARKBLUE);
+        DrawLineV(rightLandMarkCenter, targetCenter, DARKPURPLE);
 
         // Draw the Distance Value
         DrawTextEx(GetFontDefault(), strBufLeft, leftMidPoint, 30, 1.5, WHITE);
         DrawTextEx(GetFontDefault(), strBufRight, rightMidPoint, 30, 1.5, WHITE);
 
         // Draw the Simulation Distance Circle
-        DrawCircleLinesV(leftTriCenterV, simuLeftDistance, BLUE);
-        DrawCircleLinesV(rightTriCenterV, simuRightDistance, PURPLE);
+        DrawCircleLinesV(leftLandMarkCenter, simuLeftDistance, BLUE);
+        DrawCircleLinesV(rightLandMarkCenter, simuRightDistance, PURPLE);
 
         // Draw the Simulation Result
         if (history_numbers > 1)
@@ -190,6 +208,8 @@ int main()
             DrawCircleV(simuCenterHistory[0], 5, RED);
         }
 
+        // Draw All Partical Filter Result
+        DrawCircleV(filter_center_forDisplay, 5, GREEN);
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
     }
