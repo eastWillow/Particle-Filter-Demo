@@ -28,12 +28,25 @@
 * vscode : press F5 to download lib and build
 * vscode extension : [vscode-catch2-test-adapter](https://marketplace.visualstudio.com/items?itemName=matepek.vscode-catch2-test-adapter)
 
-# matlab_code SOP
+# Run C Code 
+
+1. git pull
+2. cd build
+3. ./premake5 or ./premake5.exe or premake5.osx
+4. cd ..
+5. make
+6. ./bin/Debug/Particle-Filter-Demo
+
+# C(Raylib) Result
+
+[![](https://img.youtube.com/vi/Ss2pqZDDYWw/hqdefault.jpg)](http://www.youtube.com/watch?v=Ss2pqZDDYWw "")
+
+# Matlab_code SOP
 
 1. initial.m
 2. partical_filter.m
 
-# Result
+# Matlab Result
 
 [![](http://img.youtube.com/vi/_iThyEJgUIU/0.jpg)](http://www.youtube.com/watch?v=_iThyEJgUIU "")
 
