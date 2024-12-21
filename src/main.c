@@ -57,15 +57,15 @@ int main()
 {
     uint16_t winWitdh = 2400;
     uint16_t winHeight = 1200;
-    Vector2 targetCenter = {winWitdh / 2, 0};
     Vector2 simuCenterHistory[100] = {0};
 
     float targetCenterX = winWitdh / 2;
-    float targetCenterY = 0;
+    float targetCenterY = 100;
+    Vector2 targetCenter = {targetCenterX, targetCenterY};
     bool mouseFollow = false;
     char strBufLeft[] = "9999.99 cm";
     char strBufRight[] = "9999.99 cm";
-    float noiseRatio = 30;
+    float noiseRatio = 1;
     float fps = 100;
     float history_numbers = 100;
 
@@ -159,14 +159,16 @@ int main()
         //----------------------------------------------------------------------------------
         speed = Vector2Subtract(filter_center, last_filter_Center);
         polSpeed = CartesianToPol(speed);
+        polStd = (Vector2Pol){noiseRatio * 100.0f, 0.1f};
         predict(output_particles, input_particles, polSpeed, polStd, GetFrameTime());
-        update_weights(output_weights, output_particles, simuLeftDistance, simuRightDistance, 1, leftLandMarkCenter, rightLandMarkCenter);
-        systematic_resample(output_indexes, output_weights);
+        float sensor[2] = {simuLeftDistance, simuRightDistance};
+        Vector2 landmarks[2] = {leftLandMarkCenter, rightLandMarkCenter};
+        update_weights(weights, output_particles, sensor, 2, landmarks, 2, 50.0f);
+        systematic_resample(output_indexes, weights, PARTICLES_NUMBERS);
         resample_from_index(input_particles, output_particles, output_indexes);
         //result is in input_particles
         last_filter_Center = filter_center;
         filter_center = input_particles[0];
-        filter_center_forDisplay = (Vector2){-filter_center.x + leftLandMarkCenterX, -filter_center.y + leftLandMarkCenterY};
 
         //----------------------------------------------------------------------------------
         // Drawing
@@ -209,7 +211,11 @@ int main()
         }
 
         // Draw All Partical Filter Result
-        DrawCircleV(filter_center_forDisplay, 5, GREEN);
+        for (size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
+        {
+            DrawCircleV((Vector2){output_particles[counter].x, output_particles[counter].y}, 5, GREEN);
+        }
+        
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
     }

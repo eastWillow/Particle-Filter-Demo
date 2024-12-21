@@ -315,7 +315,12 @@ workspace (workspaceName)
         includedirs { "../src" }
         includedirs { "../include" }
 
+        includedirs {raylib_dir .. "/src" }
+        includedirs {raylib_dir .."/src/external" }
+        includedirs { raylib_dir .."/src/external/glfw/include" }
+        
         links {"googletest"}
+        links {"raylib"}
 
         cdialect "C99"
         cppdialect "C++17"

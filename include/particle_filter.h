@@ -5,19 +5,19 @@ typedef struct Vector2Pol {
 } Vector2Pol;
 
 #define PARTICLES_NUMBERS 100
-#define MAX_X 800
-#define MAX_Y 800
+#define MAX_X 400
+#define MAX_Y 400
 
-Vector2 input_particles[PARTICLES_NUMBERS];
-Vector2 output_particles[PARTICLES_NUMBERS];
+Vector2 input_particles[PARTICLES_NUMBERS] = {0};
+Vector2 output_particles[PARTICLES_NUMBERS] = {0};
 Vector2 speed = {0};
 Vector2Pol polSpeed = {0};
 Vector2Pol polStd = {1, 1};
 Vector2 filter_center = {0, 0};
 Vector2 filter_center_forDisplay = {0, 0};
 Vector2 last_filter_Center = {0, 0};
-float output_weights[PARTICLES_NUMBERS];
-size_t output_indexes[PARTICLES_NUMBERS];
+float weights[PARTICLES_NUMBERS];
+size_t output_indexes[PARTICLES_NUMBERS] = {0};
 
 float GetNormalRandomValue() {
     float U1 = (float)GetRandomValue(1, RAND_MAX) / RAND_MAX; // 近似等價於 rand()/RAND_MAX
@@ -46,8 +46,8 @@ void init(Vector2* input_particles)
 {
     for(size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
     {
-        input_particles[counter].x = GetNormalRandomValue() * MAX_X;
-        input_particles[counter].y = GetNormalRandomValue() * MAX_Y;
+        input_particles[counter].x = GetNormalRandomValue() * MAX_X + 3 * MAX_X;
+        input_particles[counter].y = GetNormalRandomValue() * MAX_Y + 3 * MAX_Y;
     }
 }
 
@@ -69,69 +69,80 @@ Vector2* input_particles, Vector2Pol speed, Vector2Pol std, float dt)
     }
 }
 
-float normal_pdf(float distance, float mu, float sigma) {
-    return (1.0 / (sigma * sqrt(2 * PI))) * exp(-0.5 * pow((distance - mu) / sigma, 2));
+float vecnorm(Vector2 vec) {
+    return sqrtf(vec.x * vec.x + vec.y * vec.y);
+}
+
+double normal_pdf(double x, double mu, double sigma) {
+    double coefficient = 1.0 / (sigma * sqrt(2.0 * PI));
+    double exponent = -((x - mu) * (x - mu)) / (2.0 * sigma * sigma);
+    return coefficient * exp(exponent);
 }
 
 void update_weights(float* output_weights, 
     Vector2* input_particles, 
-    float simuLeftDistance, float simuRightDistance, 
-    float sigma, 
-    Vector2 leftLandMarkCenter, Vector2 rightLandMarkCenter)
+    float* sensor, size_t num_sensor,
+    Vector2* input_landmarks, size_t num_landmarks,
+    float sigma
+    )
 {
-    float sum_weights = 0.0;
-
-    for(size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
-    {
-        output_weights[counter] = 1.0;
+    // Initialize weights to 1
+    for (size_t i = 0; i < PARTICLES_NUMBERS; i++) {
+        weights[i] = 1.0f;
     }
 
-    for(size_t counter = 0; counter < 2; counter++)
-    {
-        for(size_t inner_counter = 0; inner_counter < PARTICLES_NUMBERS; inner_counter++)
-        {
-            switch(counter)
-            {
-                case 0:
-                    output_weights[inner_counter] *= normal_pdf(Vector2Distance(input_particles[inner_counter], leftLandMarkCenter), simuLeftDistance, sigma);
-                    break;
-                case 1:
-                    output_weights[inner_counter] *= normal_pdf(Vector2Distance(input_particles[inner_counter], rightLandMarkCenter), simuRightDistance, sigma);
-                    break;
-            }
+    // Update weights based on landmarks
+    for (size_t i = 0; i < num_landmarks; i++) {
+        for (size_t j = 0; j < PARTICLES_NUMBERS; j++) {
+            Vector2 diff = {input_particles[j].x - input_landmarks[i].x, input_particles[j].y - input_landmarks[i].y};
+            float distance = vecnorm(diff);
+            float pdf_value = normal_pdf(distance, sensor[i], sigma);
+            weights[j] *= pdf_value;
         }
-        for(size_t inner_counter = 0; inner_counter < PARTICLES_NUMBERS; inner_counter++)
-        {
-            sum_weights += output_weights[inner_counter];
+
+        // Normalize weights
+        float sum_weights = 0.0f;
+        for (size_t j = 0; j < PARTICLES_NUMBERS; j++) {
+            sum_weights += weights[j];
         }
-        for(size_t inner_counter = 0; inner_counter < PARTICLES_NUMBERS; inner_counter++)
-        {
-            output_weights[inner_counter] /= sum_weights;
+        for (size_t j = 0; j < PARTICLES_NUMBERS; j++) {
+            weights[j] /= sum_weights;
         }
     }
+
+    // Final normalization
+    float sum_weights = 0.0f;
+    for (size_t i = 0; i < PARTICLES_NUMBERS; i++) {
+        sum_weights += weights[i];
+    }
+    for (size_t i = 0; i < PARTICLES_NUMBERS; i++) {
+        weights[i] /= sum_weights;
+    }
+
 }
 
-void systematic_resample(size_t* output_indexes, float* input_weights)
+float uniform_random() {
+    return (float)rand() / (RAND_MAX + 1.0);
+}
+
+void systematic_resample(size_t* output_indexes, float* input_weights , size_t NUM_PARTICLES)
 {
-    size_t positions[PARTICLES_NUMBERS];
-    float cumulative_sum[PARTICLES_NUMBERS];
-    double rand_offset = (float)GetRandomValue(1, RAND_MAX) / RAND_MAX;
-
-    //Generate random positions
-    for (int i = 0; i < PARTICLES_NUMBERS; i++) {
-        positions[i] = (i + rand_offset) / PARTICLES_NUMBERS;
-    }
-
-    // Compute cummulative sum of weights
+    // Compute the cumulative sum of weights
+    float cumulative_sum[NUM_PARTICLES];
     cumulative_sum[0] = input_weights[0];
-    for (int i = 1; i < PARTICLES_NUMBERS; i++) {
+    for (int i = 1; i < NUM_PARTICLES; i++) {
         cumulative_sum[i] = cumulative_sum[i - 1] + input_weights[i];
     }
 
-    // Resample
-    size_t i = 0;
-    size_t j = 0;
-    while (i < PARTICLES_NUMBERS && j < PARTICLES_NUMBERS) {
+    // Generate uniformly spaced points
+    float positions[NUM_PARTICLES];
+    for (int i = 0; i < NUM_PARTICLES; i++) {
+        positions[i] = (uniform_random() + (float)i) / (float)NUM_PARTICLES;
+    }
+
+    // Perform the resampling
+    int i = 0, j = 0;
+    while (i < NUM_PARTICLES) {
         if (positions[i] < cumulative_sum[j]) {
             output_indexes[i] = j;
             i++;
