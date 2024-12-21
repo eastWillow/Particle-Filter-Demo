@@ -47,7 +47,7 @@ void init(Vector2* input_particles)
     for(size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
     {
         input_particles[counter].x = GetNormalRandomValue() * MAX_X + 3 * MAX_X;
-        input_particles[counter].y = GetNormalRandomValue() * MAX_Y + 3 * MAX_Y;
+        input_particles[counter].y = GetNormalRandomValue() * MAX_Y;
     }
 }
 

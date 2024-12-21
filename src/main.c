@@ -53,11 +53,14 @@ void DrawEquilateralTriangle(Vector2 center, float radius, Color color)
     DrawTriangle(vertices[0], vertices[1], vertices[2], color);
 }
 
+#define MAX_HISTORY 100
+
 int main()
 {
     uint16_t winWitdh = 2400;
     uint16_t winHeight = 1200;
-    Vector2 simuCenterHistory[100] = {0};
+    Vector2 simuCenterHistory[MAX_HISTORY] = {0};
+    Vector2 filterCenterHistory[MAX_HISTORY] = {0};
 
     float targetCenterX = winWitdh / 2;
     float targetCenterY = 100;
@@ -67,7 +70,7 @@ int main()
     char strBufRight[] = "9999.99 cm";
     float noiseRatio = 1;
     float fps = 100;
-    float history_numbers = 100;
+    float history_numbers = MAX_HISTORY;
 
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
@@ -110,10 +113,10 @@ int main()
         SetTargetFPS((int)floorf(fps));
 
         noiseSliderBarPos.y -= 25;
-        GuiSlider(noiseSliderBarPos, "History (1) :", "(100)", &history_numbers, 0, 100);
+        GuiSlider(noiseSliderBarPos, "History (1) :", "(100)", &history_numbers, 0, MAX_HISTORY);
 
         // Left LandMark
-        float leftTriXOffset = -200;
+        float leftTriXOffset = -400;
         float leftTriYOffset = 600;
         float leftLandMarkCenterX = winWitdh / 2 + leftTriXOffset;
         float leftLandMarkCenterY = leftTriYOffset;
@@ -125,7 +128,7 @@ int main()
         float simuLeftDistance = leftDistance + noiseRatio * (GetRandomValue(-1000, 1000) / 1000.0);
 
         // Right LandMark
-        float rightTriXOffset = 200;
+        float rightTriXOffset = 400;
         float rightTriYOffset = 600;
         float rightLandMarkCenterX = winWitdh / 2 + rightTriXOffset;
         float rightLandMarkCenterY = rightTriYOffset;
@@ -151,7 +154,6 @@ int main()
                 simuCenterHistory[HistoryCounter] = simuCenterHistory[HistoryCounter - 1];
             }
         }
-
         simuCenterHistory[0] = simuCenter;
 
         //----------------------------------------------------------------------------------
@@ -159,7 +161,7 @@ int main()
         //----------------------------------------------------------------------------------
         speed = Vector2Subtract(filter_center, last_filter_Center);
         polSpeed = CartesianToPol(speed);
-        polStd = (Vector2Pol){noiseRatio * 100.0f, 0.1f};
+        polStd = (Vector2Pol){noiseRatio * 10.0f, 180 * DEG2RAD};
         predict(output_particles, input_particles, polSpeed, polStd, GetFrameTime());
         float sensor[2] = {simuLeftDistance, simuRightDistance};
         Vector2 landmarks[2] = {leftLandMarkCenter, rightLandMarkCenter};
@@ -168,7 +170,21 @@ int main()
         resample_from_index(input_particles, output_particles, output_indexes);
         //result is in input_particles
         last_filter_Center = filter_center;
-        filter_center = input_particles[0];
+
+        for(size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
+        {
+            filter_center = Vector2Add(filter_center, input_particles[counter]);
+        }
+        filter_center = Vector2Scale(filter_center, 1.0f / PARTICLES_NUMBERS);
+
+        if (history_numbers > 1)
+        {
+            for (size_t HistoryCounter = (size_t)history_numbers - 1; HistoryCounter > (0); HistoryCounter--)
+            {
+                filterCenterHistory[HistoryCounter] = filterCenterHistory[HistoryCounter - 1];
+            }
+        }
+        filterCenterHistory[0] = filter_center;
 
         //----------------------------------------------------------------------------------
         // Drawing
@@ -197,23 +213,25 @@ int main()
         DrawCircleLinesV(leftLandMarkCenter, simuLeftDistance, BLUE);
         DrawCircleLinesV(rightLandMarkCenter, simuRightDistance, PURPLE);
 
+        // Draw All Partical Filter Result
+        for (size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
+        {
+            DrawCircleV((Vector2){output_particles[counter].x, output_particles[counter].y}, 5, YELLOW);
+        }
+
         // Draw the Simulation Result
         if (history_numbers > 1)
         {
             for (size_t HistoryCounter = (size_t)history_numbers - 1; HistoryCounter > 0; HistoryCounter--)
             {
                 DrawCircleV(simuCenterHistory[HistoryCounter], 5, ColorAlpha(RED, 1.0f - HistoryCounter / (history_numbers * 1.0f)));
+                DrawCircleV(filterCenterHistory[HistoryCounter], 5, ColorAlpha(GREEN, 1.0f - HistoryCounter / (history_numbers * 1.0f)));
             }
         }
         else
         {
             DrawCircleV(simuCenterHistory[0], 5, RED);
-        }
-
-        // Draw All Partical Filter Result
-        for (size_t counter = 0; counter < PARTICLES_NUMBERS; counter++)
-        {
-            DrawCircleV((Vector2){output_particles[counter].x, output_particles[counter].y}, 5, GREEN);
+            DrawCircleV(filterCenterHistory[0], 5, GREEN);
         }
         
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
